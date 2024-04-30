@@ -1,61 +1,48 @@
 workflows:
- react-native-ios:
-        name: React Native iOS
-        max_build_duration: 120
-        instance_type: mac_mini_m2
-        integrations:
-          app_store_connect: codemagic
-        environment:
-          ios_signing:
-            distribution_type: app_store
-            bundle_identifier: io.codemagic.sample.reactnative
-          vars:
-            XCODE_WORKSPACE: "CodemagicSample.xcworkspace" # <-- Put the name of your Xcode workspace here
-            XCODE_SCHEME: "CodemagicSample" # <-- Put the name of your Xcode scheme here
-            APP_ID: 1555555551 # <-- Put the app id number here. This is found in App Store Connect > App > General > App Information
-          node: v19.7.0
-          xcode: latest
-          cocoapods: default
-        scripts:
-            - name: Install npm dependencies
-              script: |
-                                npm install
-            - name: Install CocoaPods dependencies
-              script: |
-                                cd ios && pod install
-            - name: Set Info.plist values
-              script: |
-                # This allows publishing without manually answering the question about encryption 
-                PLIST=$CM_BUILD_DIR/$XCODE_SCHEME/Info.plist
-                PLIST_BUDDY=/usr/libexec/PlistBuddy
-                $PLIST_BUDDY -c "Add :ITSAppUsesNonExemptEncryption bool false" $PLIST                
-            - name: Set up code signing settings on Xcode project
-              script: |
-                                xcode-project use-profiles --warn-only
-            - name: Increment build number
-              script: |
-                cd $CM_BUILD_DIR/ios
-                LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_ID")
-                agvtool new-version -all $(($LATEST_BUILD_NUMBER + 1))                
-            - name: Build ipa for distribution
-              script: |
-                xcode-project build-ipa \
-                  --workspace "$CM_BUILD_DIR/ios/$XCODE_WORKSPACE" \
-                  --scheme "$XCODE_SCHEME"                
-        artifacts:
-            - build/ios/ipa/*.ipa
-            - /tmp/xcodebuild_logs/*.log
-            - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
-            - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
-        publishing:
-          email:
-            recipients:
-              - user_1@example.com
-              - user_2@example.com
-            notify:
-              success: true
-              failure: false
-          app_store_connect:
-            auth: integration
-            submit_to_testflight: false
-            submit_to_app_store: false
+
+  ios-build:
+
+    name: iOS Build
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    
+    integrations:
+      xcode: latest
+      cocoapods: default
+      
+    environment:
+      vars:
+        XCODE_PROJECT: "MyApp.xcodeproj"
+        XCODE_SCHEME: "MyApp"
+        BUNDLE_ID: "com.mycompany.myapp"
+
+      xcode: latest  
+      cocoapods: default
+
+    scripts:
+
+      - name: Install dependencies
+        script: |
+          pod install
+          
+      - name: Set bundle ID
+        script: xcode-project set-bundle-id "$BUNDLE_ID" "$XCODE_PROJECT"
+        
+      - name: Build ipa 
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME" \
+            --export-method ad-hoc
+            
+    artifacts:
+    
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+    
+      email:
+      
+        recipients:
+         - justjacex@gmail.com
